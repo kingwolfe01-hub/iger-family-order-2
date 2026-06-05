@@ -210,7 +210,6 @@
             background-color: #555;
         }
 
-        /* 數量控制：修正手機 LINE 內建瀏覽器輸入 Bug */
         .qty-control {
             display: flex;
             align-items: center;
@@ -250,6 +249,26 @@
 
         .qty-btn:active {
             transform: scale(0.96);
+        }
+
+        .payment-info {
+            margin-top: 12px;
+            background: #f7fbff;
+            border: 1px solid #cfe6ff;
+            color: #333;
+            border-radius: 9px;
+            padding: 12px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .bank-box {
+            background: #fff8e6;
+            border: 1px solid #f6d58b;
+            border-radius: 9px;
+            padding: 12px;
+            margin-top: 10px;
+            line-height: 1.8;
         }
 
         .cart-item {
@@ -495,6 +514,39 @@
         </div>
     </div>
 
+    <!-- 付款方式 -->
+    <div class="card">
+        <h2>付款方式</h2>
+
+        <label for="payment-method">請選擇付款方式 <span class="required">*</span></label>
+        <select id="payment-method" onchange="togglePaymentInfo(); saveBuyerInfo();">
+            <option value="LINE Pay / LINE 轉帳">LINE Pay / LINE 轉帳</option>
+            <option value="網路銀行轉帳">網路銀行轉帳</option>
+        </select>
+
+        <div id="line-pay-info" class="payment-info">
+            <strong>LINE Pay / LINE 轉帳說明：</strong><br>
+            送出訂單後，請透過 Line 與老闆確認付款方式。<br>
+            付款完成後，請回傳付款完成畫面或通知老闆核對。
+        </div>
+
+        <div id="bank-transfer-info" class="payment-info" style="display:none;">
+            <strong>網路銀行轉帳資訊：</strong>
+
+            <div class="bank-box">
+                銀行名稱：台中銀行<br>
+                銀行代號：053<br>
+                帳號：067280016103<br>
+                戶名：黃亮智
+            </div>
+
+            匯款完成後，請回傳以下資料方便核對：<br>
+            1. 匯款帳號末五碼<br>
+            2. 匯款金額<br>
+            3. 匯款時間
+        </div>
+    </div>
+
     <!-- 購物車 -->
     <div class="cart-section">
         <h2>購物車清單</h2>
@@ -575,6 +627,12 @@
 
     // 你的 LINE 個人連結
     const myLineUrl = "https://line.me/ti/p/~kingolfe01";
+
+    // 銀行收款資料
+    const bankName = "台中銀行";
+    const bankCode = "053";
+    const bankAccount = "067280016103";
+    const bankAccountName = "黃亮智";
 
     const products = {
         "冰鋒武士": {
@@ -674,6 +732,7 @@
         updateProduct();
         renderCart();
         bindFormAutoSave();
+        togglePaymentInfo();
     };
 
     function initProductSelect() {
@@ -787,6 +846,24 @@
         }
 
         setQty(currentQty - 1);
+    }
+
+    // =========================
+    // 付款方式
+    // =========================
+
+    function togglePaymentInfo() {
+        const paymentMethod = document.getElementById("payment-method").value;
+        const linePayInfo = document.getElementById("line-pay-info");
+        const bankTransferInfo = document.getElementById("bank-transfer-info");
+
+        if (paymentMethod === "網路銀行轉帳") {
+            linePayInfo.style.display = "none";
+            bankTransferInfo.style.display = "block";
+        } else {
+            linePayInfo.style.display = "block";
+            bankTransferInfo.style.display = "none";
+        }
     }
 
     // =========================
@@ -926,6 +1003,7 @@
         const buyerPhone = document.getElementById("buyer-phone").value.trim();
         const buyerAddress = document.getElementById("buyer-address").value.trim();
         const buyerNote = document.getElementById("buyer-note").value.trim();
+        const paymentMethod = document.getElementById("payment-method").value;
 
         if (!validateBuyerInfo(buyerName, buyerPhone, buyerAddress)) {
             return;
@@ -966,6 +1044,21 @@
         }
 
         message += `【訂單總金額】NT$ ${formatMoney(totals.grandTotal)}\n\n`;
+
+        message += `【付款方式】${paymentMethod}\n`;
+
+        if (paymentMethod === "網路銀行轉帳") {
+            message += `請匯款至以下帳戶：\n`;
+            message += `銀行名稱：${bankName}\n`;
+            message += `銀行代號：${bankCode}\n`;
+            message += `帳號：${bankAccount}\n`;
+            message += `戶名：${bankAccountName}\n`;
+            message += `匯款完成後，請回傳匯款帳號末五碼、匯款金額與匯款時間，方便核對。\n\n`;
+        } else {
+            message += `請透過 Line 與老闆確認 LINE Pay / LINE 轉帳付款方式。\n`;
+            message += `付款完成後，請回傳付款完成畫面或通知老闆核對。\n\n`;
+        }
+
         message += `運費規則：同一收件地址 1～3 件運費 NT$150，4 件以上免運費。\n`;
         message += `活動說明：皆享正版原廠保固一年及活動贈品。\n\n`;
         message += `再麻煩您協助確認，謝謝！`;
@@ -1023,7 +1116,8 @@
             name: document.getElementById("buyer-name").value.trim(),
             phone: document.getElementById("buyer-phone").value.trim(),
             address: document.getElementById("buyer-address").value.trim(),
-            note: document.getElementById("buyer-note").value.trim()
+            note: document.getElementById("buyer-note").value.trim(),
+            paymentMethod: document.getElementById("payment-method").value
         };
 
         localStorage.setItem("tigerFamilyBuyerInfo", JSON.stringify(buyerInfo));
@@ -1049,6 +1143,10 @@
                 document.getElementById("buyer-phone").value = info.phone || "";
                 document.getElementById("buyer-address").value = info.address || "";
                 document.getElementById("buyer-note").value = info.note || "";
+
+                if (info.paymentMethod) {
+                    document.getElementById("payment-method").value = info.paymentMethod;
+                }
             } catch (e) {
                 console.log("收件資訊讀取失敗");
             }
@@ -1056,10 +1154,11 @@
     }
 
     function bindFormAutoSave() {
-        const fields = ["buyer-name", "buyer-phone", "buyer-address", "buyer-note"];
+        const fields = ["buyer-name", "buyer-phone", "buyer-address", "buyer-note", "payment-method"];
 
         fields.forEach(id => {
             document.getElementById(id).addEventListener("input", saveBuyerInfo);
+            document.getElementById(id).addEventListener("change", saveBuyerInfo);
         });
     }
 
@@ -1077,8 +1176,10 @@
         document.getElementById("buyer-phone").value = "";
         document.getElementById("buyer-address").value = "";
         document.getElementById("buyer-note").value = "";
+        document.getElementById("payment-method").value = "LINE Pay / LINE 轉帳";
 
         setQty(1);
+        togglePaymentInfo();
         renderCart();
 
         alert("已清空購物車與表單資料");
