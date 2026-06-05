@@ -186,6 +186,18 @@
             cursor: not-allowed;
         }
 
+        .btn-contact-line {
+            background-color: #06C755;
+            color: white;
+            margin-top: 10px;
+            padding: 15px;
+            font-size: 17px;
+        }
+
+        .btn-contact-line:hover {
+            background-color: #05a948;
+        }
+
         .btn-clear {
             background-color: #777;
             color: white;
@@ -478,7 +490,8 @@
         <textarea id="buyer-note" placeholder="可填寫希望到貨時間、特殊需求，沒有可留空"></textarea>
 
         <div class="hint">
-            ※ 本表單會將訂購內容整理後開啟 Line 傳送，實際訂單仍以雙方 Line 確認內容為準。
+            ※ 本表單會將訂購內容整理後開啟 Line 傳送，實際訂單仍以雙方 Line 確認內容為準。<br>
+            ※ 若有尺寸、款式或庫存問題，也可以點下方「直接 Line 聯絡我」。
         </div>
     </div>
 
@@ -520,6 +533,10 @@
             傳送訂單至 Line
         </button>
 
+        <button class="btn btn-contact-line" onclick="openMyLine()">
+            💬 直接 Line 聯絡我
+        </button>
+
         <button class="btn btn-clear" onclick="clearOrder()">
             清空購物車與表單
         </button>
@@ -555,6 +572,9 @@
     const shippingFee = 150;
     const freeShippingQty = 4;
     const maxQtyPerAdd = 10;
+
+    // 你的 LINE 個人連結
+    const myLineUrl = "https://line.me/ti/p/~kingolfe01";
 
     const products = {
         "冰鋒武士": {
@@ -715,7 +735,7 @@
     }
 
     // =========================
-    // 數量控制：手機 LINE Bug 修正版
+    // 數量控制
     // =========================
 
     function getCurrentQty() {
@@ -893,7 +913,7 @@
     }
 
     // =========================
-    // Line 訂單送出
+    // LINE 相關功能
     // =========================
 
     function sendToLine() {
@@ -954,6 +974,10 @@
 
         const encodedMessage = encodeURIComponent(message);
         window.location.href = `https://line.me/R/msg/text/?${encodedMessage}`;
+    }
+
+    function openMyLine() {
+        window.location.href = myLineUrl;
     }
 
     function validateBuyerInfo(name, phone, address) {
