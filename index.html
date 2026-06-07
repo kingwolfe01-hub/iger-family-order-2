@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tiger Family 護脊書包 - 專屬訂購表單</title>
-
     <style>
         * {
             box-sizing: border-box;
@@ -440,11 +439,8 @@
         }
     </style>
 </head>
-
 <body>
-
 <div class="container">
-
     <!-- 商品區 -->
     <div class="card">
         <h1>Tiger Family 護脊書包</h1>
@@ -470,7 +466,6 @@
         <select id="size-select" onchange="updatePrice()"></select>
 
         <label for="qty-input">3. 購買數量 <span class="required">*</span></label>
-
         <div class="qty-control">
             <button type="button" class="qty-btn" onclick="decreaseQty()">－</button>
             <input
@@ -604,8 +599,11 @@
 <div id="giftModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
+
         <h3>🎁 豪華聯名雙件組</h3>
+
         <img src="images/gift.jpg" alt="贈品圖片">
+
         <p>
             包含：三麗鷗手提補習袋 + 卡片零錢包<br>
             男款 / 女款供選擇
@@ -617,7 +615,6 @@
     // =========================
     // 基本資料設定
     // =========================
-
     let cart = [];
 
     const discountRate = 0.75;
@@ -627,6 +624,9 @@
 
     // 你的 LINE 個人連結
     const myLineUrl = "https://line.me/ti/p/~kingolfe01";
+
+    // Google Apps Script 網址
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbywj8vksd-B08uUVgDs8P-78BdiUgoKp5_lLUGGfaebNz1TpWUGzUcvYUt8Q27viGwd/exec";
 
     // 銀行收款資料
     const bankName = "台中銀行";
@@ -725,7 +725,6 @@
     // =========================
     // 頁面初始化
     // =========================
-
     window.onload = function () {
         initProductSelect();
         loadSavedData();
@@ -750,7 +749,6 @@
     // =========================
     // 商品選擇與價格
     // =========================
-
     function updateProduct() {
         const selectedStyle = document.getElementById("style-select").value;
         const productData = products[selectedStyle];
@@ -782,8 +780,8 @@
 
         const originalPrice = Number(selectedOption.dataset.originalPrice);
         const discountPrice = Math.round(originalPrice * discountRate);
-
         const priceDisplay = document.getElementById("price-display");
+
         priceDisplay.dataset.unitPrice = discountPrice;
         priceDisplay.dataset.originalPrice = originalPrice;
 
@@ -796,7 +794,6 @@
     // =========================
     // 數量控制
     // =========================
-
     function getCurrentQty() {
         let qty = parseInt(document.getElementById("qty-input").value, 10);
 
@@ -851,7 +848,6 @@
     // =========================
     // 付款方式
     // =========================
-
     function togglePaymentInfo() {
         const paymentMethod = document.getElementById("payment-method").value;
         const linePayInfo = document.getElementById("line-pay-info");
@@ -869,7 +865,6 @@
     // =========================
     // 購物車功能
     // =========================
-
     function addToCart() {
         const style = document.getElementById("style-select").value;
         const size = document.getElementById("size-select").value;
@@ -900,9 +895,7 @@
 
         saveCart();
         renderCart();
-
         alert(`已加入購物車：${style}，數量 ${qty} 件`);
-
         setQty(1);
     }
 
@@ -990,9 +983,8 @@
     }
 
     // =========================
-    // LINE 相關功能
+    // LINE 相關功能與 Google Sheet 串接
     // =========================
-
     function sendToLine() {
         if (cart.length === 0) {
             alert("購物車目前沒有商品喔！");
@@ -1010,8 +1002,79 @@
         }
 
         const totals = calculateTotals();
+        const checkoutBtn = document.getElementById("checkout-btn");
+
+        const orderData = {
+            name: buyerName,
+            phone: buyerPhone,
+            address: buyerAddress,
+            note: buyerNote,
+            paymentMethod: paymentMethod,
+            totalQty: totals.totalQty,
+            subtotal: totals.subtotal,
+            shipping: totals.shipping,
+            totalAmount: totals.grandTotal,
+            cart: cart
+        };
+
+        checkoutBtn.innerText = "訂單資料建立中...";
+        checkoutBtn.disabled = true;
+
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify(orderData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Google Sheet 回應異常，HTTP 狀態碼：${response.status}`);
+            }
+
+            return response.text();
+        })
+        .then(result => {
+            console.log("Google Sheet 回傳：", result);
+
+            const message = buildLineMessage({
+                buyerName,
+                buyerPhone,
+                buyerAddress,
+                buyerNote,
+                paymentMethod,
+                totals
+            });
+
+            saveBuyerInfo();
+
+            checkoutBtn.innerText = "傳送訂單至 Line";
+            checkoutBtn.disabled = false;
+
+            const encodedMessage = encodeURIComponent(message);
+            window.location.href = `https://line.me/R/msg/text/?${encodedMessage}`;
+        })
+        .catch(error => {
+            alert("訂單備份發生異常，請確認網路狀態後再試一次。");
+            console.error("寫入 Google Sheet 失敗:", error);
+
+            checkoutBtn.innerText = "傳送訂單至 Line";
+            checkoutBtn.disabled = false;
+        });
+    }
+
+    function buildLineMessage(data) {
+        const {
+            buyerName,
+            buyerPhone,
+            buyerAddress,
+            buyerNote,
+            paymentMethod,
+            totals
+        } = data;
 
         let message = "";
+
         message += `老闆 您好，我想確認以下 Tiger Family 護脊書包訂購資訊：\n\n`;
 
         message += `【收件資訊】\n`;
@@ -1063,50 +1126,16 @@
         message += `活動說明：皆享正版原廠保固一年及活動贈品。\n\n`;
         message += `再麻煩您協助確認，謝謝！`;
 
-        saveBuyerInfo();
-
-        const encodedMessage = encodeURIComponent(message);
-        window.location.href = `https://line.me/R/msg/text/?${encodedMessage}`;
+        return message;
     }
 
     function openMyLine() {
         window.location.href = myLineUrl;
     }
 
-    function validateBuyerInfo(name, phone, address) {
-        if (!name) {
-            alert("請填寫收件人姓名");
-            document.getElementById("buyer-name").focus();
-            return false;
-        }
-
-        if (!phone) {
-            alert("請填寫聯絡電話");
-            document.getElementById("buyer-phone").focus();
-            return false;
-        }
-
-        const phoneNumbersOnly = phone.replace(/\D/g, "");
-
-        if (phoneNumbersOnly.length < 8) {
-            alert("請確認聯絡電話是否正確，電話至少需要 8 碼數字");
-            document.getElementById("buyer-phone").focus();
-            return false;
-        }
-
-        if (!address) {
-            alert("請填寫完整收件地址");
-            document.getElementById("buyer-address").focus();
-            return false;
-        }
-
-        return true;
-    }
-
     // =========================
     // 資料保存 localStorage
     // =========================
-
     function saveCart() {
         localStorage.setItem("tigerFamilyCart", JSON.stringify(cart));
     }
@@ -1129,7 +1158,8 @@
 
         if (savedCart) {
             try {
-                cart = JSON.parse(savedCart) || [];
+                const parsedCart = JSON.parse(savedCart);
+                cart = Array.isArray(parsedCart) ? parsedCart : [];
             } catch (e) {
                 cart = [];
             }
@@ -1154,11 +1184,21 @@
     }
 
     function bindFormAutoSave() {
-        const fields = ["buyer-name", "buyer-phone", "buyer-address", "buyer-note", "payment-method"];
+        const fields = [
+            "buyer-name",
+            "buyer-phone",
+            "buyer-address",
+            "buyer-note",
+            "payment-method"
+        ];
 
         fields.forEach(id => {
-            document.getElementById(id).addEventListener("input", saveBuyerInfo);
-            document.getElementById(id).addEventListener("change", saveBuyerInfo);
+            const el = document.getElementById(id);
+
+            if (!el) return;
+
+            el.addEventListener("input", saveBuyerInfo);
+            el.addEventListener("change", saveBuyerInfo);
         });
     }
 
@@ -1188,7 +1228,6 @@
     // =========================
     // Modal
     // =========================
-
     function openModal() {
         document.getElementById("giftModal").style.display = "flex";
     }
@@ -1206,9 +1245,41 @@
     };
 
     // =========================
+    // 表單驗證
+    // =========================
+    function validateBuyerInfo(name, phone, address) {
+        if (!name) {
+            alert("請輸入收件人姓名");
+            document.getElementById("buyer-name").focus();
+            return false;
+        }
+
+        if (!phone) {
+            alert("請輸入聯絡電話");
+            document.getElementById("buyer-phone").focus();
+            return false;
+        }
+
+        const taiwanMobilePattern = /^09\d{8}$/;
+
+        if (!taiwanMobilePattern.test(phone)) {
+            alert("請輸入正確的手機號碼，例如：0912345678");
+            document.getElementById("buyer-phone").focus();
+            return false;
+        }
+
+        if (!address) {
+            alert("請輸入收件地址");
+            document.getElementById("buyer-address").focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    // =========================
     // 工具函式
     // =========================
-
     function formatMoney(number) {
         return Number(number).toLocaleString("zh-TW");
     }
@@ -1222,6 +1293,5 @@
             .replace(/'/g, "&#039;");
     }
 </script>
-
 </body>
 </html>
